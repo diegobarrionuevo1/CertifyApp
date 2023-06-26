@@ -4,6 +4,7 @@ import { Persona, superponerTextoEnImagen } from "./sharp";
 import path from "path";
 import cors from "cors"
 import fs from "fs"
+import axios from "axios";
 
 dotenv.config();
 
@@ -74,28 +75,92 @@ const fetchImage = async (url: string): Promise<Buffer> => {
 
   return buffer;
 };
+//ian envialo simple
+const SMTP_EMAIL = process.env.SMTP_EMAIL
+const SMTP_URL = process.env.SMTP_URL
+const API_KEY = process.env.API_KEY
+const MAX_RETRIES = 3
 
-app.get("/files/jpg/:id_curso/:nombreArchivo", (req: Request, res: Response) => {
-  try {
-    if (req.headers.authorization === process.env.AUTHORIZATION_CERT) {
-      res.status(200);
-      const { id_curso, nombreArchivo } = req.params;
-      const filePath = path.join(__dirname, "files/jpg", id_curso, nombreArchivo);
-
-      if (!fs.existsSync(filePath)) {
-        res.status(404).send('File not found');
-        return;
-      }  
-      res.sendFile(filePath);
-    }else{
-      res.status(403);
-      res.send("Unauthorized");
-    }
-  } catch (error) {
-    res.send("internal error: " + error);
-    res.status(500);
+async function sendEmail(emailData: { email: any; data: any; }, retryCount = 0) {
+  const { email, data } = emailData
+  const requestData = {
+    from: SMTP_EMAIL,
+    to: email,
+    templateID: "643851c86fe769a160054def",
+    subject: "Felicitaciones por completar el taller",
+    substitutions: data.reduce((acc: { [x: string]: any; }, item: { key: string | number; value: any; }) => {
+      acc[item.key] = item.value
+      return acc
+    }, {}),
   }
+  if (!SMTP_URL) {
+  throw new Error('SMTP_URL is not defined');
+  }
+  try {
+    await axios.post(SMTP_URL, requestData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${API_KEY}`,
+      },
+    })
+  } catch (e) {
+    console.log("Error when sending email: ")
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retry attempt ${retryCount + 1} for ${email}`)
+      await sendEmail(emailData, retryCount + 1)
+    } else {
+      console.log(
+        `Failed to send email to ${email} after ${MAX_RETRIES} retries`
+      )
+    }
+  }
+}
+app.post("/send-emails", async (req, res) => {
+  try {
+    const { usuarios: users } = req.body
+    if (users?.length === 0) {
+      return res.status(400).json({ error: "No users provided" })
+    }
+
+    const sendEmails = users?.map((user: any) => sendEmail(user))
+
+    await Promise.all(sendEmails)
+    res.json({ success: true })
+  } catch (error) {
+    console.error("Error sending emails:", error)
+    return res
+      .status(500)
+      .json({ error: "An error occurred while sending emails" })
+  }
+})
+
+
+app.get("/files/jpg/:id_curso/:nombreArchivo", (req, res) => {
+  if (!process.env.AUTHORIZATION_CERT) {
+    console.error("AUTHORIZATION_CERT is not set in environment variables");
+    res.status(500).send("Server configuration error");
+    return;
+  }
+
+  if (req.headers.authorization !== process.env.AUTHORIZATION_CERT) {
+    res.status(403).send("Unauthorized");
+    return;
+  }
+
+  const { id_curso, nombreArchivo } = req.params;
+  const filePath = path.join(__dirname, "files/jpg", id_curso, nombreArchivo);
+
+  fs.access(filePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      console.error(`File not found at path: ${filePath}`);
+      res.status(404).send('File not found');
+      return;
+    }
+
+    res.status(200).sendFile(filePath);
+  });
 });
+
 app.get("/files/pdf/:id_curso/:nombreArchivo", (req: Request, res: Response) => {
   try {
     if (req.headers.authorization === process.env.AUTHORIZATION_CERT) {
