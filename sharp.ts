@@ -1,8 +1,6 @@
 import sharp from "sharp";
 import fs from "fs";
-import PDFDocument from 'pdfkit';
-
-
+import PDFDocument from "pdfkit";
 export interface Persona {
   apellido: string;
   correo: string;
@@ -21,9 +19,6 @@ export async function superponerTextoEnImagen(
   imagenPlantilla: Buffer,
   personas: Persona[]
 ) {
-  // Crear el documento PDF
-  const pdf = new PDFDocument();
-
   // Cargar la imagen plantilla
   const imagenOriginal = sharp(imagenPlantilla);
   const metadata = await imagenOriginal.metadata();
@@ -40,6 +35,8 @@ export async function superponerTextoEnImagen(
   // Procesar cada persona y generar una imagen superpuesta
   for (const persona of personas) {
     const { nombre, apellido, correo } = persona;
+    // Crear el documento PDF
+    let pdf = new PDFDocument({size:[1123,794], margins: { top: 1, left: 1, bottom: 1, right: 1 }});
 
     const capaTexto = capaTextoBase(nombre, apellido);
     // Superponer la capa de texto en la imagen original
@@ -48,7 +45,7 @@ export async function superponerTextoEnImagen(
       .composite([{ input: capaTexto }])
       .toBuffer();
 
-    const copiaImagenSuperpuesta = Buffer.from(imagenSuperpuesta)
+    const copiaImagenSuperpuesta = Buffer.from(imagenSuperpuesta);
 
     // Guardar la imagen superpuesta en un archivo
     const nombreArchivo = `${id_curso}_${correo.toLowerCase()}.jpg`;
@@ -63,8 +60,11 @@ export async function superponerTextoEnImagen(
     console.log(`Imagen superpuesta creada para ${nombre} ${apellido}.`);
 
     // Agregar la imagen al documento PDF
-
-    pdf.image(rutaImagenSalida);
+    pdf.image(rutaImagenSalida, {
+      fit: [pdf.page.width, pdf.page.height], // Ajustar al tamaño de la página
+      align: "right",
+      valign: "center"
+    });
 
     // Guardar el documento PDF
     const nombrePDF = `${id_curso}_${correo.toLowerCase()}.pdf`;
