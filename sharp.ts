@@ -12,6 +12,7 @@ export interface Persona {
   nombre: string;
   pais: string;
   pais_id: number | null;
+  url_Front:string;
 }
 
 export async function superponerTextoEnImagen(
