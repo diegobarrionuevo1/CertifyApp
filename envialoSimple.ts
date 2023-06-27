@@ -82,6 +82,14 @@ const enviar = async (
 ): Promise<void> => {
   try {
     await fetchEnvialo({ url: urlEnvialo, method: "POST", body: requestData, which: "envialo simple" });
+    // await fetch(urlEnvialo, { 
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Authorization: `Bearer ${process.env.API_KEY}`,
+    //   },
+    //   body: JSON.stringify(requestData)
+    // })
   } catch (e) {
     if (e instanceof Error) {
       console.error(`Error when sending email: ${e.message}`);
@@ -114,9 +122,7 @@ export const sendEmail = async (emailData: DataModelada): Promise<void> => {
     emailData.dataRegistrados.map(async (result) => {
       const requestData: RequesDataEmails = {
         from: SMTP_EMAIL,
-        to: result.correo,
         templateID: "643851c86fe769a160054def",
-        subject: "Felicitaciones por completar el taller",
         substitutions: {
           apellido: result.apellido,
           estado_asistencia: result.estado_asistencia,
@@ -125,6 +131,8 @@ export const sendEmail = async (emailData: DataModelada): Promise<void> => {
           nombre: result.nombre,
           urlFront: result.url_Front,
         },
+        to: result.correo,
+        subject: "Felicitaciones por completar el taller",
       };
       await enviar(SMTP_URL, requestData, 0, result.correo);
     })
