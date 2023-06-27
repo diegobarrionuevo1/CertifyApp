@@ -131,6 +131,9 @@ export const sendEmail = async (emailData: DataModelada): Promise<void> => {
   );
 };
 
+
+
+
 /* app.post("/send-emails", async (req, res) => {
   try {
     const { usuarios: users } = req.body
