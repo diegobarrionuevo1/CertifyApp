@@ -1,163 +1,54 @@
 import { Persona } from "./sharp";
 
-interface FetchEnvialoParams {
-  url: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  body?: object;
-  which: string;
-}
+const MAX_RETRIES: number = 3;
 
-interface FetchResponse {
-  ok: boolean;
-  status: number;
-  message: string;
-  json: any;
-}
+async function sendEmail(emailData: Persona, retryCount: number = 0, API_KEY , titulo_curso, fecha_inicio) {
+  const requestData = {
+    from: "info@certificados.donweb.com",
+    to: emailData.correo,
+    templateID: "643851c86fe769a160054def",
+    subject: `Felicitaciones por completar el taller ${titulo_curso}`,
+    substitutions: {
+      nombre: emailData.nombre,
+      apellido: emailData.apellido,
+      urlFront: emailData.url_front,
+      titulo_curso: titulo_curso,
+      fecha_taller: fecha_inicio
 
-const fetchEnvialo = async ({
-  url,
-  method,
-  body = {},
-  which,
-}: FetchEnvialoParams): Promise<FetchResponse> => {
-  const API_KEY = process.env.API_KEY;
-  if (!API_KEY) {
-    throw new Error("API_KEY is not defined");
-  }
-
-  const requestOptions: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
     },
-    body: method !== "GET" ? JSON.stringify(body) : undefined,
   };
 
-  const response = await fetch(url, requestOptions);
-  const json = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      `Request failed with status ${response.status} IN ACQUISITION OF ${which}`
-    );
-  }
-  
-  return {
-    ok: response.ok,
-    status: response.status,
-    message: response.statusText,
-    json,
-  };
-};
-
-interface DataModelada {
-  tituloCurso: string;
-  dataRegistrados: Persona[];
-}
-
-interface RequesDataEmails {
-  from: string;
-  to: string;
-  templateID: string;
-  subject: string;
-  substitutions: {
-    apellido: string;
-    estado_asistencia: string;
-    id_registrado: number;
-    titulo_curso: string;
-    nombre: string;
-    urlFront: string;
-  };
-}
-
-const MAX_RETRIES = 3;
-let emailsFailes: Set<string> = new Set();
-
-const enviar = async (
-  urlEnvialo: string,
-  requestData: RequesDataEmails,
-  retryCount: number = 0,
-  email: string
-): Promise<void> => {
   try {
-    await fetchEnvialo({ url: urlEnvialo, method: "POST", body: requestData, which: "envialo simple" });
-    // await fetch(urlEnvialo, { 
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     Authorization: `Bearer ${process.env.API_KEY}`,
-    //   },
-    //   body: JSON.stringify(requestData)
-    // })
-  } catch (e) {
-    if (e instanceof Error) {
-      console.error(`Error when sending email: ${e.message}`);
-    } else {
-      console.error(`An unexpected error occurred: ${e}`);
-    }
+    const response = await fetch("https://api.envialosimple.email/api/v1/mail/send", {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEY}`,
+      },
+    });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  } catch (e) {
+    console.log("Error when sending email: ", e);
     if (retryCount < MAX_RETRIES) {
-      console.log(`Retry attempt ${retryCount + 1} for ${email}`);
-      await enviar(urlEnvialo, requestData, retryCount + 1, email);
+      console.log(`Retry attempt ${retryCount + 1} for ${emailData.correo}`);
+      await sendEmail(emailData, retryCount + 1,API_KEY,titulo_curso, fecha_inicio);
     } else {
-      emailsFailes.add(email);
-      console.error(
-        `Failed to send email to ${email} after ${MAX_RETRIES} retries`
+      console.log(
+        `Failed to send email to ${emailData.correo} after ${MAX_RETRIES} retries`
       );
     }
   }
 };
 
-
-export const sendEmail = async (emailData: DataModelada): Promise<void> => {
-  const SMTP_EMAIL = process.env.SMTP_EMAIL;
-  const SMTP_URL = process.env.SMTP_URL;
-
-  if (!SMTP_URL || !SMTP_EMAIL) {
-    throw new Error(`Env SMTP_URL  || SMTP_EMAIL is not defined`);
-  };
-
-  await Promise.all(
-    emailData.dataRegistrados.map(async (result) => {
-      const requestData: RequesDataEmails = {
-        from: SMTP_EMAIL,
-        templateID: "643851c86fe769a160054def",
-        substitutions: {
-          apellido: result.apellido,
-          estado_asistencia: result.estado_asistencia,
-          id_registrado: result.id_registrado,
-          titulo_curso: emailData.tituloCurso,
-          nombre: result.nombre,
-          urlFront: result.url_Front,
-        },
-        to: result.correo,
-        subject: "Felicitaciones por completar el taller",
-      };
-      await enviar(SMTP_URL, requestData, 0, result.correo);
-    })
-  );
-};
-
-
-
-
-/* app.post("/send-emails", async (req, res) => {
+export async function funcionParaEnviarEmail(usuarios: Persona[],titulo_curso, fecha_inicio, API_KEY) {
   try {
-    const { usuarios: users } = req.body
-    if (users?.length === 0) {
-      return res.status(400).json({ error: "No users provided" })
-    }
-
-    const sendEmails = users?.map((user) => sendEmail(user))
-
-    await Promise.all(sendEmails)
-    res.json({ success: true })
+    const sendEmails = usuarios?.map((usuario) => sendEmail(usuario, 0 , API_KEY, titulo_curso, fecha_inicio));
+    await Promise.all(sendEmails);
   } catch (error) {
-    console.error("Error sending emails:", error)
-    return res
-      .status(500)
-      .json({ error: "An error occurred while sending emails" })
+    console.error("Error sending emails:", error);
   }
-})
- */
+}

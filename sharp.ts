@@ -12,7 +12,7 @@ export interface Persona {
   nombre: string;
   pais: string;
   pais_id: number | null;
-  url_Front:string;
+  url_front: string;
 }
 
 export async function superponerTextoEnImagen(
@@ -61,8 +61,6 @@ export async function superponerTextoEnImagen(
     }
 
     fs.writeFileSync(rutaImagenSalida, imagenSuperpuesta);
-    console.log(`Imagen superpuesta creada para ${nombre} ${apellido}.`);
-
     // Agregar la imagen al documento PDF
     pdf.image(rutaImagenSalida, {
       fit: [pdf.page.width, pdf.page.height], // Ajustar al tamaño de la página
@@ -81,7 +79,7 @@ export async function superponerTextoEnImagen(
 
     pdf.pipe(fs.createWriteStream(rutaPDF));
     pdf.end();
-    console.log(`Documento PDF creado: ${rutaPDF}`);
+
     const imagenFondoTransparente = Buffer.from(
       `<svg width="1200" height="627" xmlns="http://www.w3.org/2000/svg"></svg>`
     );
@@ -101,7 +99,6 @@ export async function superponerTextoEnImagen(
 
     // LinkedIn-------------------------------------------------------------------------
 
-    console.log(`Imagen RRSS creada para ${nombre} ${apellido}.`);
     const imagenPrincipalRedimensionada = await imagenPrincipal
       .clone()
       .resize(null, 627)
@@ -125,6 +122,5 @@ export async function superponerTextoEnImagen(
     }
 
     fs.writeFileSync(rutaImagenRrss, imagenRrss);
-    console.log(`Imagen RRSS creada para ${nombre} ${apellido}.`);
   }
 }

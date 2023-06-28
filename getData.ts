@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { Persona, superponerTextoEnImagen } from "./sharp";
-import { sendEmail } from "./envialoSimple";
+import { funcionParaEnviarEmail } from "./envialoSimple";
 
- const fetchCustom = (
+const fetchCustom = (
   url: string,
   method: string,
   body: object,
@@ -72,7 +72,8 @@ export const getData = async (req: Request, res: Response) => {
     "CURSO"
   );
   if (fetchPromise.ok) {
-    const { id_curso, titulo_curso, plantilla, webinars } = fetchPromise.json.data
+    const { id_curso, titulo_curso,fecha_inicio, plantilla, webinars } =
+      fetchPromise.json.data;
     let plantillaCurso: any;
     let registrados: Set<number | String> = new Set();
     let dataRegistrados: Array<Persona> = [];
@@ -84,7 +85,6 @@ export const getData = async (req: Request, res: Response) => {
         {},
         "WEBINARS"
       );
-      console.log(webinarsPromise.json);
       if (webinarsPromise.ok) {
         const registradosIds = webinarsPromise.json.data.registrados;
         registradosIds.forEach((registradoId: number | string) => {
@@ -94,11 +94,6 @@ export const getData = async (req: Request, res: Response) => {
     });
 
     await Promise.all(fetchWebinars);
-
-    console.log(
-      "----------------------------------------------------Listo el array con registrados:",
-      Array.from(registrados)
-    );
 
     const fetchRegistrados = Array.from(registrados).map(
       async (registradoId) => {
@@ -121,11 +116,6 @@ export const getData = async (req: Request, res: Response) => {
 
     await Promise.all(fetchRegistrados);
 
-    console.log(
-      "----------------------------------------------------Listo el array con la data:",
-      dataRegistrados
-    );
-
     const imageUrl = `https://certapps.donweb.com/assets/${plantilla}`;
     try {
       plantillaCurso = await fetchImage(imageUrl);
@@ -143,13 +133,21 @@ export const getData = async (req: Request, res: Response) => {
       .catch((error) => {
         console.error("Error al crear las imágenes superpuestas:", error);
       });
-      try {
-        const envialoSimple = await sendEmail({tituloCurso: titulo_curso,
-          dataRegistrados,
-        })   
+
+    console.log(
+      "---------------------------------------------------------------------------------------------"
+    );
+    console.log(titulo_curso)
+    console.log(dataRegistrados)
+    
+
+    try {
+          const envialoSimple = await funcionParaEnviarEmail(
+          dataRegistrados,titulo_curso,fecha_inicio, process.env.API_KEY
+        )   
       } catch (error) {
         console.log(error)
-      }
+      } 
   } else {
     res.status(500).send("Internal server error.");
   }
