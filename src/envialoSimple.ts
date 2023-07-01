@@ -2,7 +2,7 @@ import { Persona } from "./sharp";
 
 const MAX_RETRIES: number = 3;
 
-async function sendEmail(emailData: Persona, retryCount: number = 0, API_KEY , titulo_curso, fecha_inicio) {
+async function sendEmail(emailData: Persona, retryCount: number = 0, API_KEY:string|undefined , titulo_curso:string, fecha_inicio:string) {
   const requestData = {
     from: "info@certificados.donweb.com",
     to: emailData.correo,
@@ -11,7 +11,8 @@ async function sendEmail(emailData: Persona, retryCount: number = 0, API_KEY , t
     substitutions: {
       nombre: emailData.nombre,
       apellido: emailData.apellido,
-      urlFront: emailData.url_front,
+      id_curso: String(emailData.id_curso),
+      correo:emailData.correo,
       titulo_curso: titulo_curso,
       fecha_taller: fecha_inicio
 
@@ -44,7 +45,7 @@ async function sendEmail(emailData: Persona, retryCount: number = 0, API_KEY , t
   }
 };
 
-export async function funcionParaEnviarEmail(usuarios: Persona[],titulo_curso, fecha_inicio, API_KEY) {
+export async function funcionParaEnviarEmail(usuarios: Persona[],titulo_curso:string, fecha_inicio:string, API_KEY:string|undefined) {
   try {
     const sendEmails = usuarios?.map((usuario) => sendEmail(usuario, 0 , API_KEY, titulo_curso, fecha_inicio));
     await Promise.all(sendEmails);

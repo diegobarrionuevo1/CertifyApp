@@ -65,12 +65,15 @@ const fetchImage = async (url: string): Promise<Buffer> => {
 
 export const getData = async (req: Request, res: Response) => {
   const curso = req.body.keys[0];
+
   const fetchPromise = await fetchCustom(
     `https://certapps.donweb.com/items/Cursos/${curso}`,
     "GET",
     {},
     "CURSO"
   );
+  console.log(fetchPromise)
+
   if (fetchPromise.ok) {
     const { id_curso, titulo_curso,fecha_inicio, plantilla, webinars } =
       fetchPromise.json.data;
@@ -94,6 +97,9 @@ export const getData = async (req: Request, res: Response) => {
     });
 
     await Promise.all(fetchWebinars);
+    console.log(fetchWebinars)
+    console.log(Array.from(registrados))
+
 
     const fetchRegistrados = Array.from(registrados).map(
       async (registradoId) => {
@@ -107,7 +113,8 @@ export const getData = async (req: Request, res: Response) => {
           const correo = registradosPromise.json.data.correo;
           if (!conjuntoCorreos.has(correo)) {
             conjuntoCorreos.add(correo);
-            registradosPromise.json.data.urlFront = `https://certificados.donweb.com/${id_curso}/${id_curso}_${correo.toLowerCase()}`;
+            registradosPromise.json.data.id_curso = id_curso
+            //registradosPromise.json.data.urlFront = `https://certificados.donweb.com/${id_curso}/${id_curso}_${correo.toLowerCase()}`;
             dataRegistrados.push(registradosPromise.json.data);
           }
         }
